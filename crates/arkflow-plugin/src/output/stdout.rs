@@ -3,7 +3,7 @@
 //! Outputs the processed data to standard output
 
 use arkflow_core::output::{register_output_builder, Output, OutputBuilder};
-use arkflow_core::{Bytes, Content, Error, MessageBatch};
+use arkflow_core::{Bytes, Error, MessageBatch};
 use async_trait::async_trait;
 use datafusion::arrow;
 use datafusion::arrow::array::RecordBatch;
@@ -46,10 +46,7 @@ where
     }
 
     async fn write(&self, batch: &MessageBatch) -> Result<(), Error> {
-        match &batch.content {
-            Content::Arrow(v) => self.arrow_stdout(&v).await,
-            Content::Binary(v) => self.binary_stdout(&v).await,
-        }
+        self.arrow_stdout(batch)
     }
 
     async fn close(&self) -> Result<(), Error> {
@@ -78,17 +75,6 @@ impl<T: StdWriter> StdoutOutput<T> {
         }
 
         writer_std.flush().map_err(Error::Io)?;
-        Ok(())
-    }
-    async fn binary_stdout(&self, msg: &[Bytes]) -> Result<(), Error> {
-        let mut writer_std = self.writer.lock().await;
-        for x in msg {
-            if self.config.append_newline.unwrap_or(true) {
-                writeln!(writer_std, "{}", String::from_utf8_lossy(&x)).map_err(Error::Io)?
-            } else {
-                write!(writer_std, "{}", String::from_utf8_lossy(&x)).map_err(Error::Io)?
-            }
-        }
         Ok(())
     }
 }
@@ -156,7 +142,7 @@ mod tests {
         assert!(output.connect().await.is_ok());
 
         // Test write with simple text
-        let msg = MessageBatch::from_string("test message");
+        let msg = MessageBatch::from_string("test message").unwrap();
         assert!(output.write(&msg).await.is_ok());
 
         // Test close
@@ -172,7 +158,7 @@ mod tests {
         let output = StdoutOutput::new(config, MockWriter::new()).unwrap();
 
         // Test binary data
-        let binary_msg = MessageBatch::from_string("binary test");
+        let binary_msg = MessageBatch::from_string("binary test").unwrap();
         assert!(output.write(&binary_msg).await.is_ok());
 
         // Test Arrow data (would need more complex setup)
@@ -187,7 +173,7 @@ mod tests {
             append_newline: Some(true),
         };
         let output = StdoutOutput::new(config, MockWriter::new()).unwrap();
-        let msg = MessageBatch::from_string("test");
+        let msg = MessageBatch::from_string("test").unwrap();
         output.write(&msg).await.unwrap();
         let writer = output.writer.lock().await;
         assert_eq!(writer.get_output(), "test\n");
@@ -197,7 +183,7 @@ mod tests {
             append_newline: Some(false),
         };
         let output = StdoutOutput::new(config, MockWriter::new()).unwrap();
-        let msg = MessageBatch::from_string("test");
+        let msg = MessageBatch::from_string("test").unwrap();
         output.write(&msg).await.unwrap();
         let writer = output.writer.lock().await;
         assert_eq!(writer.get_output(), "test");
@@ -214,15 +200,15 @@ mod tests {
         // Test multiple messages
         // Write multiple messages one by one
         output
-            .write(&MessageBatch::from_string("first"))
+            .write(&MessageBatch::from_string("first").unwrap())
             .await
             .unwrap();
         output
-            .write(&MessageBatch::from_string("second"))
+            .write(&MessageBatch::from_string("second").unwrap())
             .await
             .unwrap();
         output
-            .write(&MessageBatch::from_string("third"))
+            .write(&MessageBatch::from_string("third").unwrap())
             .await
             .unwrap();
 

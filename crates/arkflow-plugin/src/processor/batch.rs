@@ -3,7 +3,7 @@
 //! Batch multiple messages into one or more messages
 
 use arkflow_core::processor::{register_processor_builder, Processor, ProcessorBuilder};
-use arkflow_core::{Content, Error, MessageBatch};
+use arkflow_core::{  Error, MessageBatch};
 use async_trait::async_trait;
 use datafusion::arrow;
 use serde::{Deserialize, Serialize};
