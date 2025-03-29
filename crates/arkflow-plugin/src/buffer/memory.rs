@@ -42,7 +42,9 @@ impl MemoryBuffer {
                         // notify read
                         notify_clone.notify_one();
                     }
-                    _ = close_clone.cancelled()=>{
+                    _ = close_clone.cancelled() => {
+                         // notify read
+                        notify_clone.notify_one();
                         break;
                     }
                 }
